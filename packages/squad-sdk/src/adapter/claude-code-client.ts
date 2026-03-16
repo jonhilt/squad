@@ -175,6 +175,19 @@ export class ClaudeCodeClient {
         }
       }
 
+      // If caller provides onPermissionRequest (approve-all pattern from Copilot SDK),
+      // set permission mode to 'auto' so claude doesn't block on TTY prompts.
+      // Non-interactive subprocess = must have a non-interactive permission mode.
+      if (config.onPermissionRequest && !sessionOpts.permissionMode) {
+        sessionOpts.permissionMode = 'auto';
+      }
+
+      // Fallback: if no permission mode is set at all, default to 'auto'
+      // since we're running non-interactively (no stdin)
+      if (!sessionOpts.permissionMode) {
+        sessionOpts.permissionMode = 'auto';
+      }
+
       // Map tool restrictions
       if (config.availableTools) {
         sessionOpts.allowedTools = config.availableTools;
