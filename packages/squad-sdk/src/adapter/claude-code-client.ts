@@ -42,21 +42,23 @@ const tracer = trace.getTracer('squad-sdk');
  * to use the Squad MCP tools for recording decisions, learnings, etc.
  */
 const SQUAD_TOOL_INSTRUCTIONS = `
-## Squad Tools
+## Squad Tools — MANDATORY
 
-You have access to Squad MCP tools for team coordination. Use them proactively:
+You have Squad MCP tools. You MUST call them — do NOT just describe actions in text.
 
-- **squad_decide** — When you make a significant technical decision (architecture, library choice, approach), call this tool to record it. Include your reasoning. Decisions are stored in .squad/decisions/inbox/ for team review.
+**RULES:**
+1. When you make ANY technical decision → CALL mcp__squad-tools__squad_decide. Do not skip this.
+2. When you learn something useful → CALL mcp__squad-tools__squad_memory with section "learnings".
+3. When you discover a reusable pattern → CALL mcp__squad-tools__squad_skill to record it.
+4. When work belongs to another agent → CALL mcp__squad-tools__squad_route.
 
-- **squad_memory** — After completing meaningful work, call this to record what you learned or did. Use section "learnings" for insights, "updates" for status changes, "sessions" for session notes.
+**Tool signatures:**
+- squad_decide: { author: "your-name", summary: "short title", body: "full rationale" }
+- squad_memory: { agent: "your-name", section: "learnings"|"updates"|"sessions", content: "what happened" }
+- squad_skill: { skillName: "name", operation: "write", content: "the pattern", confidence: "low"|"medium"|"high" }
+- squad_route: { targetAgent: "agent-name", task: "what to do" }
 
-- **squad_skill** — When you discover a reusable pattern or convention, write it as a skill so other agents can reference it later.
-
-- **squad_route** — When a task falls outside your charter, route it to the appropriate agent.
-
-- **squad_status** — Query the current state of active sessions.
-
-**Important:** Don't just describe decisions in your response text — actually call squad_decide so they're recorded in .squad/. Same for learnings — call squad_memory so they persist beyond this session.
+Saying "I've recorded this" without actually calling the tool is NOT acceptable. The tools write to .squad/ files that persist across sessions.
 `.trim();
 
 export type ClaudeCodeConnectionState = 'disconnected' | 'connected' | 'error';
