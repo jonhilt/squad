@@ -105,6 +105,30 @@ describeIfClaude('ClaudeCodeClient — live integration', () => {
     await session.close();
   }, 60_000);
 
+  it('should support multi-turn conversations via --resume', async () => {
+    const session = await client.createSession({
+      model: 'haiku',
+      systemMessage: { mode: 'replace', content: 'You are a test bot. Always reply with exactly one word.' },
+    });
+
+    // Turn 1: establish context
+    const r1 = await session.sendAndWait({ prompt: 'Remember the secret word: BANANA. Reply with OK.' }, 30_000);
+    const t1 = (r1 as { data: { content: string } }).data.content;
+    expect(t1).toBeTruthy();
+
+    // Turn 2: recall context (proves --resume worked)
+    const r2 = await session.sendAndWait({ prompt: 'What was the secret word? Reply with just the word.' }, 30_000);
+    const t2 = (r2 as { data: { content: string } }).data.content.toLowerCase();
+    expect(t2).toContain('banana');
+
+    // Turn 3: further context retention
+    const r3 = await session.sendAndWait({ prompt: 'Say the secret word backwards. Just the word.' }, 30_000);
+    const t3 = (r3 as { data: { content: string } }).data.content.toLowerCase();
+    expect(t3).toContain('ananab');
+
+    await session.close();
+  }, 120_000);
+
   it('should clean up on disconnect', async () => {
     const errors = await client.disconnect();
     expect(errors).toHaveLength(0);
