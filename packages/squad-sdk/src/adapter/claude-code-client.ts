@@ -27,6 +27,7 @@ import type {
 } from './types.js';
 import { ClaudeCodeSession, type ClaudeCodeSessionOptions } from './claude-code-session.js';
 import { ClaudeCodeSessionRegistry } from './claude-code-session-registry.js';
+import { appendToHistory } from '../agents/history-shadow.js';
 import { SDKConnectionError, AuthenticationError, ConfigurationError } from './errors.js';
 import { trace, SpanStatusCode } from '../runtime/otel-api.js';
 
@@ -198,7 +199,23 @@ export class ClaudeCodeClient {
 
       const session = new ClaudeCodeSession(sessionOpts);
       this.activeSessions.set(sessionId, session);
-      this.registry.register(sessionId, config.model ?? 'default', model ?? 'sonnet');
+
+      // Derive agent name: clientName > parsed from charter > model > default
+      let agentName = config.clientName ?? config.model ?? 'default';
+      if (agentName === 'default' || agentName === model) {
+        // Try to extract agent name from system prompt charter header: "# Name — Role"
+        const sysContent = config.systemMessage && 'content' in config.systemMessage
+          ? config.systemMessage.content ?? ''
+          : '';
+        const charterMatch = sysContent.match(/^#\s+(\w+)\s+—/m);
+        if (charterMatch?.[1]) {
+          agentName = charterMatch[1].toLowerCase();
+        }
+      }
+      this.registry.register(sessionId, agentName, model ?? 'sonnet');
+
+      // Wire post-completion hooks for .squad/ artifacts
+      this.wireSessionHooks(session, sessionId, agentName);
 
       span.setAttribute('session.id', sessionId);
 
@@ -362,6 +379,47 @@ export class ClaudeCodeClient {
         };
     this.clientEventHandlers.add(h);
     return () => this.clientEventHandlers.delete(h);
+  }
+
+  /**
+   * Wire post-completion hooks onto a session.
+   * Updates .squad/ artifacts when agents finish work:
+   * - Session registry: cost, status, turn count
+   * - Agent history: learnings appended after each interaction
+   */
+  private wireSessionHooks(session: ClaudeCodeSession, sessionId: string, agentName: string): void {
+    const squadRoot = this.options.squadRoot ?? this.options.cwd;
+
+    // Track usage for registry updates
+    session.on('usage', (event: { type: string; [key: string]: unknown }) => {
+      const cost = typeof event['totalCostUsd'] === 'number' ? event['totalCostUsd'] : undefined;
+      const turns = typeof event['numTurns'] === 'number' ? event['numTurns'] : undefined;
+      this.registry.update(sessionId, {
+        status: 'active',
+        ...(cost !== undefined && { totalCostUsd: cost }),
+        ...(turns !== undefined && { totalTurns: turns }),
+      });
+    });
+
+    // Append response summary to agent history on completion
+    session.on('message', (event: { type: string; [key: string]: unknown }) => {
+      const text = typeof event['text'] === 'string' ? event['text'] : '';
+      if (!text || event['isError']) return;
+
+      const summary = text.length > 300
+        ? text.slice(0, 300).trimEnd() + '...'
+        : text;
+
+      // Fire and forget — don't block the session
+      appendToHistory(squadRoot, agentName, 'Learnings', summary).catch(() => {
+        // Silently ignore — history update is best-effort
+      });
+    });
+
+    // Mark session idle on completion
+    session.on('idle', () => {
+      this.registry.update(sessionId, { status: 'idle' });
+    });
   }
 
   private emitClientEvent(event: SquadClientEvent): void {
