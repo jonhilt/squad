@@ -114,6 +114,9 @@ export class ClaudeCodeSession implements SquadSession {
       args.push('--mcp-config', this.options.mcpConfig);
     }
 
+    // Separator to prevent variadic flags from consuming the prompt
+    args.push('--');
+
     // Prompt as positional argument
     args.push(prompt);
 

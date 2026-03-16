@@ -190,6 +190,7 @@
   },
   "dependencies": {
     "@github/copilot-sdk": "^0.1.32",
+    "@modelcontextprotocol/sdk": "^1.27.1",
     "vscode-jsonrpc": "^8.2.1"
   },
   "optionalDependencies": {

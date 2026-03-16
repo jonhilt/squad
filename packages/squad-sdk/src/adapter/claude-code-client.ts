@@ -11,6 +11,9 @@
 import { execFile } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { promisify } from 'node:util';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type {
   SquadSession,
   SquadSessionConfig,
@@ -187,6 +190,11 @@ export class ClaudeCodeClient {
       // since we're running non-interactively (no stdin)
       if (!sessionOpts.permissionMode) {
         sessionOpts.permissionMode = 'auto';
+      }
+
+      // Wire Squad tools MCP server if no custom mcp config is set
+      if (!sessionOpts.mcpConfig) {
+        sessionOpts.mcpConfig = this.ensureSquadMcpConfig();
       }
 
       // Map tool restrictions
@@ -379,6 +387,36 @@ export class ClaudeCodeClient {
         };
     this.clientEventHandlers.add(h);
     return () => this.clientEventHandlers.delete(h);
+  }
+
+  /**
+   * Ensure the Squad tools MCP config file exists at .squad/mcp-squad-tools.json.
+   * Returns the path to the config file.
+   */
+  private ensureSquadMcpConfig(): string {
+    const squadRoot = this.options.squadRoot ?? this.options.cwd;
+    const configPath = path.join(squadRoot, '.squad', 'mcp-squad-tools.json');
+
+    if (!fs.existsSync(configPath)) {
+      // Resolve the MCP server entrypoint relative to this module
+      const thisDir = path.dirname(fileURLToPath(import.meta.url));
+      const serverPath = path.resolve(thisDir, '../../bin/squad-mcp-server.js');
+
+      const mcpConfig = {
+        mcpServers: {
+          'squad-tools': {
+            command: 'node',
+            args: [serverPath],
+            env: { SQUAD_ROOT: squadRoot },
+          },
+        },
+      };
+
+      fs.mkdirSync(path.dirname(configPath), { recursive: true });
+      fs.writeFileSync(configPath, JSON.stringify(mcpConfig, null, 2));
+    }
+
+    return configPath;
   }
 
   /**
