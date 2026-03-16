@@ -4,15 +4,29 @@
  * Creates the appropriate Squad client based on the `backend` field
  * in .squad/config.json. Defaults to Copilot for backward compatibility.
  *
+ * IMPORTANT: The Copilot SDK import is lazy (dynamic import) so that
+ * claude-code backend users don't need @github/copilot-sdk installed.
+ *
  * @module adapter/create-client
  */
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { SquadClient, type SquadClientOptions } from './client.js';
 import { ClaudeCodeClient, type ClaudeCodeClientOptions } from './claude-code-client.js';
+import type { SquadSession, SquadSessionConfig } from './types.js';
+
+// SquadClient types imported for the return type — actual class loaded lazily
+import type { SquadClientOptions } from './client.js';
 
 export type SquadBackend = 'copilot' | 'claude-code';
+
+/** Common interface satisfied by both SquadClient and ClaudeCodeClient */
+export interface SquadClientLike {
+  connect(): Promise<void>;
+  disconnect(): Promise<Error[]>;
+  createSession(config?: SquadSessionConfig): Promise<SquadSession>;
+  isConnected(): boolean;
+}
 
 export interface CreateClientOptions {
   /** Working directory / team root */
@@ -47,14 +61,17 @@ function detectBackend(cwd: string): SquadBackend {
 /**
  * Create a Squad client for the detected or specified backend.
  *
+ * The Copilot SDK is loaded lazily — only when backend is 'copilot'.
+ * This means claude-code users don't need @github/copilot-sdk installed.
+ *
  * Usage:
  * ```typescript
- * const client = createSquadClient({ cwd: teamRoot });
+ * const client = await createSquadClient({ cwd: teamRoot });
  * await client.connect();
  * const session = await client.createSession({ model: 'sonnet' });
  * ```
  */
-export function createSquadClient(options: CreateClientOptions): SquadClient | ClaudeCodeClient {
+export async function createSquadClient(options: CreateClientOptions): Promise<SquadClientLike> {
   const backend = options.backend ?? detectBackend(options.cwd);
 
   if (backend === 'claude-code') {
@@ -65,6 +82,8 @@ export function createSquadClient(options: CreateClientOptions): SquadClient | C
     });
   }
 
+  // Lazy import — avoids loading @github/copilot-sdk when using claude-code
+  const { SquadClient } = await import('./client.js');
   return new SquadClient({
     cwd: options.cwd,
     ...options.copilotOptions,

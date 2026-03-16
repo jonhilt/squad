@@ -238,7 +238,7 @@ export async function runShell(): Promise<void> {
 
   // Create SDK client — auto-detects backend from .squad/config.json
   // Set "backend": "claude-code" in config.json to use Claude Code instead of Copilot
-  const client = createSquadClient({ cwd: teamRoot });
+  const client = await createSquadClient({ cwd: teamRoot });
 
   let shellApi: ShellApi | undefined;
   let origAddMessage: ((msg: ShellMessage) => void) | undefined;
