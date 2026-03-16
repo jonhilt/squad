@@ -37,6 +37,28 @@ import { trace, SpanStatusCode } from '../runtime/otel-api.js';
 const execFileAsync = promisify(execFile);
 const tracer = trace.getTracer('squad-sdk');
 
+/**
+ * Instructions appended to every agent's system prompt so they know
+ * to use the Squad MCP tools for recording decisions, learnings, etc.
+ */
+const SQUAD_TOOL_INSTRUCTIONS = `
+## Squad Tools
+
+You have access to Squad MCP tools for team coordination. Use them proactively:
+
+- **squad_decide** — When you make a significant technical decision (architecture, library choice, approach), call this tool to record it. Include your reasoning. Decisions are stored in .squad/decisions/inbox/ for team review.
+
+- **squad_memory** — After completing meaningful work, call this to record what you learned or did. Use section "learnings" for insights, "updates" for status changes, "sessions" for session notes.
+
+- **squad_skill** — When you discover a reusable pattern or convention, write it as a skill so other agents can reference it later.
+
+- **squad_route** — When a task falls outside your charter, route it to the appropriate agent.
+
+- **squad_status** — Query the current state of active sessions.
+
+**Important:** Don't just describe decisions in your response text — actually call squad_decide so they're recorded in .squad/. Same for learnings — call squad_memory so they persist beyond this session.
+`.trim();
+
 export type ClaudeCodeConnectionState = 'disconnected' | 'connected' | 'error';
 
 export interface ClaudeCodeClientOptions {
@@ -177,6 +199,16 @@ export class ClaudeCodeClient {
         } else if ('content' in config.systemMessage && config.systemMessage.content) {
           sessionOpts.appendSystemPrompt = config.systemMessage.content;
         }
+      }
+
+      // Append Squad tool usage instructions to system prompt
+      const squadToolInstructions = SQUAD_TOOL_INSTRUCTIONS;
+      if (sessionOpts.appendSystemPrompt) {
+        sessionOpts.appendSystemPrompt += '\n\n' + squadToolInstructions;
+      } else if (sessionOpts.systemPrompt) {
+        sessionOpts.systemPrompt += '\n\n' + squadToolInstructions;
+      } else {
+        sessionOpts.appendSystemPrompt = squadToolInstructions;
       }
 
       // If caller provides onPermissionRequest (approve-all pattern from Copilot SDK),
