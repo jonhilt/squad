@@ -90,6 +90,22 @@
       "types": "./dist/adapter/errors.d.ts",
       "import": "./dist/adapter/errors.js"
     },
+    "./adapter/claude-code-client": {
+      "types": "./dist/adapter/claude-code-client.d.ts",
+      "import": "./dist/adapter/claude-code-client.js"
+    },
+    "./adapter/claude-code-session": {
+      "types": "./dist/adapter/claude-code-session.d.ts",
+      "import": "./dist/adapter/claude-code-session.js"
+    },
+    "./adapter/claude-code-event-mapper": {
+      "types": "./dist/adapter/claude-code-event-mapper.d.ts",
+      "import": "./dist/adapter/claude-code-event-mapper.js"
+    },
+    "./adapter/claude-code-session-registry": {
+      "types": "./dist/adapter/claude-code-session-registry.d.ts",
+      "import": "./dist/adapter/claude-code-session-registry.js"
+    },
     "./config/migrations": {
       "types": "./dist/config/migrations/index.d.ts",
       "import": "./dist/config/migrations/index.js"
