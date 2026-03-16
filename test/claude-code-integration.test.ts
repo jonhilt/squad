@@ -129,6 +129,66 @@ describeIfClaude('ClaudeCodeClient — live integration', () => {
     await session.close();
   }, 120_000);
 
+  it('should run parallel agents with different system prompts', async () => {
+    // Agent 1: always responds in uppercase
+    const session1 = await client.createSession({
+      model: 'haiku',
+      systemMessage: { mode: 'replace', content: 'You are SHOUTER bot. Always respond in ALL CAPS. One sentence max.' },
+    });
+
+    // Agent 2: always responds in lowercase
+    const session2 = await client.createSession({
+      model: 'haiku',
+      systemMessage: { mode: 'replace', content: 'You are whisper bot. Always respond in all lowercase. One sentence max.' },
+    });
+
+    // Send to both in parallel
+    const [r1, r2] = await Promise.all([
+      session1.sendAndWait({ prompt: 'Say hello' }, 30_000),
+      session2.sendAndWait({ prompt: 'Say hello' }, 30_000),
+    ]);
+
+    const t1 = (r1 as { data: { content: string } }).data.content;
+    const t2 = (r2 as { data: { content: string } }).data.content;
+
+    // Agent 1 should be mostly uppercase
+    const uppercaseRatio1 = (t1.match(/[A-Z]/g) || []).length / Math.max(t1.replace(/[^a-zA-Z]/g, '').length, 1);
+    expect(uppercaseRatio1).toBeGreaterThan(0.5);
+
+    // Agent 2 should be mostly lowercase
+    const lowercaseRatio2 = (t2.match(/[a-z]/g) || []).length / Math.max(t2.replace(/[^a-zA-Z]/g, '').length, 1);
+    expect(lowercaseRatio2).toBeGreaterThan(0.5);
+
+    await session1.close();
+    await session2.close();
+  }, 60_000);
+
+  it('should pass charter content as system prompt', async () => {
+    // Simulates what dispatchToAgent does: charter → buildAgentPrompt → systemMessage
+    // Uses 'replace' mode since that's what gives full control (append competes with CC defaults)
+    const charter = `# Pirate Bot — Translator
+
+## Identity
+You are a pirate translator. You MUST rewrite any input as a pirate would say it.
+Always include "ARRR" in your response.
+
+## Boundaries
+- Never break character`;
+
+    const systemPrompt = `You are an AI agent on a software development team.\n\nYOUR CHARTER:\n${charter}`;
+
+    const session = await client.createSession({
+      model: 'haiku',
+      systemMessage: { mode: 'replace', content: systemPrompt },
+    });
+
+    const result = await session.sendAndWait({ prompt: 'Hello, how are you today?' }, 30_000);
+    const text = (result as { data: { content: string } }).data.content.toUpperCase();
+    expect(text).toContain('ARRR');
+
+    await session.close();
+  }, 60_000);
+
   it('should clean up on disconnect', async () => {
     const errors = await client.disconnect();
     expect(errors).toHaveLength(0);
