@@ -211,17 +211,11 @@ export class ClaudeCodeClient {
         sessionOpts.appendSystemPrompt = squadToolInstructions;
       }
 
-      // If caller provides onPermissionRequest (approve-all pattern from Copilot SDK),
-      // set permission mode to 'auto' so claude doesn't block on TTY prompts.
-      // Non-interactive subprocess = must have a non-interactive permission mode.
-      if (config.onPermissionRequest && !sessionOpts.permissionMode) {
-        sessionOpts.permissionMode = 'auto';
-      }
-
-      // Fallback: if no permission mode is set at all, default to 'auto'
-      // since we're running non-interactively (no stdin)
+      // Non-interactive subprocess needs a non-interactive permission mode.
+      // Use 'bypassPermissions' to cover both built-in tools and MCP tools.
+      // CC's native hooks (.claude/settings.json) still provide safety guardrails.
       if (!sessionOpts.permissionMode) {
-        sessionOpts.permissionMode = 'auto';
+        sessionOpts.permissionMode = 'bypassPermissions';
       }
 
       // Wire Squad tools MCP server if no custom mcp config is set
@@ -229,19 +223,11 @@ export class ClaudeCodeClient {
         sessionOpts.mcpConfig = this.ensureSquadMcpConfig();
       }
 
-      // Pre-approve Squad MCP tools so agents can call them without TTY prompts
-      const squadMcpTools = [
-        'mcp__squad-tools__squad_decide',
-        'mcp__squad-tools__squad_memory',
-        'mcp__squad-tools__squad_skill',
-        'mcp__squad-tools__squad_route',
-        'mcp__squad-tools__squad_status',
-      ];
-      if (!sessionOpts.allowedTools) {
-        sessionOpts.allowedTools = squadMcpTools;
-      } else {
-        sessionOpts.allowedTools.push(...squadMcpTools);
-      }
+      // Pre-approve Squad MCP tools so agents can call them without TTY prompts.
+      // We use --dangerously-skip-permissions since --allowedTools is restrictive
+      // (it disables all other tools). The safety net hook in .claude/settings.json
+      // still provides protection for dangerous commands.
+      // TODO: Find a more granular approach once CC supports per-tool MCP permissions.
 
       // Map tool restrictions
       if (config.availableTools) {
