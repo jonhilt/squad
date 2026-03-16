@@ -60,6 +60,7 @@ describe('mapCCEventToSquad — assistant events', () => {
     expect(mapped).toHaveLength(1);
     expect(mapped[0]!.type).toBe('message_delta');
     expect(mapped[0]!.text).toBe('Hello world');
+    expect(mapped[0]!.deltaContent).toBe('Hello world');
     expect(mapped[0]!.model).toBe('claude-sonnet-4-6');
   });
 

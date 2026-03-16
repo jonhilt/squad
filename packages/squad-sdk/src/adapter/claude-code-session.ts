@@ -206,7 +206,9 @@ export class ClaudeCodeSession implements SquadSession {
       const result = await this.spawnAndStream(options.prompt);
       // After first successful message, subsequent messages resume the session
       this.options.isResume = true;
-      return result?.result ?? null;
+      // Return in the format Squad shell expects: { data: { content: "..." } }
+      const text = result?.result ?? '';
+      return { data: { content: text } };
     } finally {
       this.timeoutMs = originalTimeout;
     }

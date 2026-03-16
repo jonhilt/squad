@@ -150,6 +150,10 @@ function mapAssistantEvent(event: CCAssistantEvent): SquadMappedEvent[] {
       events.push({
         type: 'message_delta',
         text: block.text,
+        // Squad shell extractDelta() looks for these field names
+        deltaContent: block.text,
+        delta: block.text,
+        content: block.text,
         model: msg.model,
         messageId: msg.id,
       });

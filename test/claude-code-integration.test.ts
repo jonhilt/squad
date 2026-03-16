@@ -86,9 +86,11 @@ describeIfClaude('ClaudeCodeClient — live integration', () => {
 
     const result = await session.sendAndWait({ prompt: 'Say "pong"' }, 30_000);
 
-    // Should have received a result
+    // Should have received a result in Squad shell format
     expect(result).toBeTruthy();
-    expect(typeof result).toBe('string');
+    const resultObj = result as { data: { content: string } };
+    expect(resultObj.data.content).toBeTruthy();
+    expect(typeof resultObj.data.content).toBe('string');
 
     // Should have emitted Squad events
     const hasUsage = events.some(e => e.type === 'usage');
