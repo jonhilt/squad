@@ -19,6 +19,7 @@ import { StreamBridge } from './stream-bridge.js';
 import { ShellLifecycle, loadWelcomeData } from './lifecycle.js';
 import { SquadClient } from '@bradygaster/squad-sdk/client';
 import type { SquadSession } from '@bradygaster/squad-sdk/client';
+import { createSquadClient } from '@bradygaster/squad-sdk/adapter/create-client';
 import type { SquadPermissionHandler } from '@bradygaster/squad-sdk/client';
 import type { ShellMessage } from './types.js';
 import { initSquadTelemetry, TIMEOUTS, StreamingPipeline, recordAgentSpawn, recordAgentDuration, recordAgentError, recordAgentDestroy, RuntimeEventBus, resolveSquad, resolveGlobalSquadPath } from '@bradygaster/squad-sdk';
@@ -235,8 +236,9 @@ export async function runShell(): Promise<void> {
     // Non-fatal: shell works without discovered agents
   }
 
-  // Create SDK client (auto-connects on first session creation)
-  const client = new SquadClient({ cwd: teamRoot });
+  // Create SDK client — auto-detects backend from .squad/config.json
+  // Set "backend": "claude-code" in config.json to use Claude Code instead of Copilot
+  const client = createSquadClient({ cwd: teamRoot });
 
   let shellApi: ShellApi | undefined;
   let origAddMessage: ((msg: ShellMessage) => void) | undefined;

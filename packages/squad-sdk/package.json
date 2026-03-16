@@ -90,6 +90,10 @@
       "types": "./dist/adapter/errors.d.ts",
       "import": "./dist/adapter/errors.js"
     },
+    "./adapter/create-client": {
+      "types": "./dist/adapter/create-client.d.ts",
+      "import": "./dist/adapter/create-client.js"
+    },
     "./adapter/claude-code-client": {
       "types": "./dist/adapter/claude-code-client.d.ts",
       "import": "./dist/adapter/claude-code-client.js"

@@ -116,16 +116,33 @@ export async function runStart(cwd: string, options: StartOptions): Promise<void
     console.log(`${YELLOW}⚠${RESET} devtunnel not installed. Local mirror on port ${actualPort}.`);
   }
 
-  // ─── Spawn copilot in PTY ─────────────────────────────────
+  // ─── Spawn AI agent in PTY ─────────────────────────────────
   // Dynamic import node-pty (native module)
   // @ts-expect-error — node-pty is an optional native dependency
   const nodePty = await import('node-pty');
 
-  const copilotExePath = path.join(
-    'C:', 'ProgramData', 'global-npm', 'node_modules', '@github', 'copilot',
-    'node_modules', '@github', 'copilot-win32-x64', 'copilot.exe'
-  );
-  const defaultCmd = fs.existsSync(copilotExePath) ? copilotExePath : 'copilot';
+  // Detect backend from .squad/config.json
+  let detectedBackend = 'copilot';
+  if (squadDir) {
+    const cfgPath = path.join(squadDir, 'config.json');
+    if (fs.existsSync(cfgPath)) {
+      try {
+        const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf-8'));
+        if (cfg.backend === 'claude-code') detectedBackend = 'claude-code';
+      } catch { /* ignore corrupt config */ }
+    }
+  }
+
+  let defaultCmd: string;
+  if (detectedBackend === 'claude-code') {
+    defaultCmd = 'claude';
+  } else {
+    const copilotExePath = path.join(
+      'C:', 'ProgramData', 'global-npm', 'node_modules', '@github', 'copilot',
+      'node_modules', '@github', 'copilot-win32-x64', 'copilot.exe'
+    );
+    defaultCmd = fs.existsSync(copilotExePath) ? copilotExePath : 'copilot';
+  }
   const copilotCmd = options.command || defaultCmd;
 
   const cols = process.stdout.columns || 120;
