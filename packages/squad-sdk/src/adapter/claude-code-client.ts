@@ -229,6 +229,20 @@ export class ClaudeCodeClient {
         sessionOpts.mcpConfig = this.ensureSquadMcpConfig();
       }
 
+      // Pre-approve Squad MCP tools so agents can call them without TTY prompts
+      const squadMcpTools = [
+        'mcp__squad-tools__squad_decide',
+        'mcp__squad-tools__squad_memory',
+        'mcp__squad-tools__squad_skill',
+        'mcp__squad-tools__squad_route',
+        'mcp__squad-tools__squad_status',
+      ];
+      if (!sessionOpts.allowedTools) {
+        sessionOpts.allowedTools = squadMcpTools;
+      } else {
+        sessionOpts.allowedTools.push(...squadMcpTools);
+      }
+
       // Map tool restrictions
       if (config.availableTools) {
         sessionOpts.allowedTools = config.availableTools;
