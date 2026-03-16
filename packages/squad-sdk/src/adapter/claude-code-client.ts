@@ -150,10 +150,7 @@ export class ClaudeCodeClient {
     const span = tracer.startSpan('squad.claude-code.createSession');
     try {
       if (!this.isConnected()) {
-        throw new ConfigurationError(
-          'Client not connected. Call connect() first.',
-          { timestamp: new Date(), operation: 'createSession' },
-        );
+        await this.connect();
       }
 
       const sessionId = config.sessionId ?? randomUUID();
@@ -215,10 +212,7 @@ export class ClaudeCodeClient {
     span.setAttribute('session.id', sessionId);
     try {
       if (!this.isConnected()) {
-        throw new ConfigurationError(
-          'Client not connected. Call connect() first.',
-          { timestamp: new Date(), operation: 'resumeSession' },
-        );
+        await this.connect();
       }
 
       const model = config.model ?? this.options.defaultModel;
